@@ -1,0 +1,63 @@
+name: "winrt-go build"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # project should compile on non-windows platforms
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: init
+        run: |
+          docker build -f Dockerfile.build -t winrt-go .
+          docker run --rm -i -d --name winrt-go winrt-go
+      - name: prepare
+        run: docker exec -i winrt-go make prepare
+      - name: sanity-check
+        run: docker exec -i winrt-go make sanity-check
+      - name: build
+        run: docker exec -i winrt-go make build
+      - name: test
+        run: docker exec -i winrt-go make test
+      - name: release
+        if: github.ref == 'refs/heads/main'
+        run: docker exec -i winrt-go make release
+      - name: clean
+        run: |
+          docker exec -i winrt-go make clean
+          docker stop winrt-go
+
+  # but tests only run on windows
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18.2
+      - name: init
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/v1.46.2/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.46.2
+      - name: prepare
+        run: make prepare
+      - name: sanity-check
+        run: make sanity-check
+      - name: build
+        run: make build
+      - name: test
+        run: make test
+      - name: release
+        if: github.ref == 'refs/heads/main'
+        run: make release
+      - name: clean
+        run: |
+          make clean
+

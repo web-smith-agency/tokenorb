@@ -1,0 +1,30 @@
+{{if .Implement}}
+    func {{if and .FuncOwner (not .RequiresActivation)}}
+        (v *{{.FuncOwner}})
+    {{- end -}}
+
+    {{funcName .}} 
+    
+    {{- /* in params */ -}}
+
+    ( 
+    {{- range .InParams -}}
+        {{/*do not include out parameters, they are used as return values*/ -}}
+        {{ if .IsOut }}{{continue}}{{ end -}}
+        {{.GoVarName}} {{template "variabletype.tmpl" . }},
+    {{- end -}}
+    )
+
+    {{- /* return params */ -}}
+
+    ( {{range .InParams -}}
+        {{ if not .IsOut }}{{continue}}{{ end -}}
+        {{template "variabletype.tmpl" . }},{{end -}}
+    {{range .ReturnParams}}{{template "variabletype.tmpl" . }},{{end}} error )
+
+    {{- /* method body */ -}}
+
+    {
+    {{template "funcimpl.tmpl" .}}
+    }
+{{end}}

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "author": "TokenOrb",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-s3-devkitc-1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-ili9341", "id": "lcd", "top": -60, "left": 220, "attrs": {} },
+    { "type": "wokwi-pushbutton", "id": "btn1", "top": 260, "left": 230, "attrs": { "color": "blue", "label": "Taste 1" } },
+    { "type": "wokwi-pushbutton", "id": "btn2", "top": 260, "left": 340, "attrs": { "color": "blue", "label": "Taste 2" } },
+    { "type": "wokwi-neopixel", "id": "led1", "top": 330, "left": 250, "attrs": {} },
+    { "type": "wokwi-neopixel", "id": "led2", "top": 330, "left": 310, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "lcd:VCC", "esp:3V3.1", "red", [] ],
+    [ "lcd:GND", "esp:GND.1", "black", [] ],
+    [ "lcd:SCK", "esp:12", "green", [] ],
+    [ "lcd:MOSI", "esp:11", "green", [] ],
+    [ "lcd:CS", "esp:10", "green", [] ],
+    [ "lcd:D/C", "esp:9", "green", [] ],
+    [ "lcd:RST", "esp:14", "green", [] ],
+    [ "lcd:LED", "esp:13", "orange", [] ],
+    [ "btn1:1.l", "esp:4", "blue", [] ],
+    [ "btn1:2.l", "esp:GND.1", "black", [] ],
+    [ "btn2:1.l", "esp:5", "blue", [] ],
+    [ "btn2:2.l", "esp:GND.1", "black", [] ],
+    [ "led1:DIN", "esp:6", "violet", [] ],
+    [ "led1:VDD", "esp:5V", "red", [] ],
+    [ "led1:VSS", "esp:GND.1", "black", [] ],
+    [ "led1:DOUT", "led2:DIN", "violet", [] ],
+    [ "led2:VDD", "esp:5V", "red", [] ],
+    [ "led2:VSS", "esp:GND.1", "black", [] ]
+  ],
+  "dependencies": {}
+}

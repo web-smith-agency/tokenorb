@@ -1,0 +1,7 @@
+const Signature{{.Name}} string = "{{.Signature}}"
+
+type {{.Name}} struct {
+    {{range .Fields}}
+        {{.GoVarName}} {{.GoTypeName}}
+    {{end}}
+}

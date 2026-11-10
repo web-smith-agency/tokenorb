@@ -1,0 +1,22 @@
+const GUID{{.Name}} string = "{{.GUID}}"
+const Signature{{.Name}} string = "{{.Signature}}"
+
+type {{.Name}} struct {
+    ole.IInspectable
+}
+
+type {{.Name}}Vtbl struct {
+    ole.IInspectableVtbl
+
+    {{range .Funcs}}
+        {{funcName .}} uintptr
+    {{- end}}
+}
+
+func (v *{{.Name}}) VTable() *{{.Name}}Vtbl {
+	return (*{{.Name}}Vtbl)(unsafe.Pointer(v.RawVTable))
+}
+
+{{range .Funcs}}
+{{template "func.tmpl" .}}
+{{end}}

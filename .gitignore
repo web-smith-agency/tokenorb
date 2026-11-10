@@ -1,0 +1,6 @@
+# Build-Ausgaben
+dist/
+firmware/.pio/
+*.exe
+!installer/**/*.exe
+.DS_Store

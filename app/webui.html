@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TokenOrb</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#14171b;--dim:#6b7280;--line:#e5e7eb;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--accent:#2563eb;--track:#e8ebef}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a20;--text:#f3f4f6;--dim:#9aa3af;--line:#262a33;--track:#232831}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto;padding:24px 16px 40px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.logo{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#6ee7b7,#10b981 60%,#047857);flex:none}
+h1{font-size:22px;margin:0;font-weight:650;letter-spacing:-.01em}
+.pill{margin-left:auto;font-size:13px;padding:5px 11px;border-radius:99px;background:var(--track);color:var(--dim);display:flex;gap:7px;align-items:center;min-width:0}
+.pill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+.pill.ok i{background:var(--green)} .pill.ok{color:var(--text)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:0 0 12px;font-weight:600}
+.gauges{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center}
+.g svg{width:150px;height:150px;max-width:100%}
+.g .v{font-size:30px;font-weight:700;margin-top:-98px;height:62px}
+.g .l{color:var(--dim);font-size:13px;margin-top:10px}
+.g .r{font-size:13px;margin-top:2px}
+.age{color:var(--dim);font-size:12px;text-align:center;margin-top:10px}
+.row{display:flex;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.row:first-of-type{border-top:0}
+.row .t{flex:1;min-width:180px}
+.row .t b{font-weight:600;display:block}
+.row .t small{color:var(--dim);display:block;font-size:13px}
+.sw{position:relative;width:46px;height:28px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:var(--track);border-radius:99px;transition:.2s;cursor:pointer}
+.sw span:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px #0003}
+.sw input:checked+span{background:var(--green)}
+.sw input:checked+span:before{transform:translateX(18px)}
+input[type=range]{width:180px;accent-color:var(--green)}
+input[type=text]{font:inherit;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--text);width:220px}
+select,button{font:inherit;padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.note{font-size:13px;color:var(--dim);background:var(--track);border-radius:10px;padding:9px 12px;margin-top:6px}
+.note a{color:var(--accent)}
+.warn{color:var(--amber)} .err{color:var(--red)} .okc{color:var(--green)}
+.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--accent);color:#fff;margin-left:6px;vertical-align:1px}
+.bar{height:8px;background:var(--track);border-radius:99px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+details summary{cursor:pointer;color:var(--dim);font-size:13px;padding-top:10px}
+.notes{white-space:pre-wrap;font-size:13px;color:var(--dim);margin-top:6px;max-height:160px;overflow:auto}
+.hide{display:none!important}
+footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="logo"></div>
+    <h1>TokenOrb</h1>
+    <div class="pill" id="dev"><i></i><span>suche …</span></div>
+  </header>
+
+  <section class="card">
+    <h2>Aktuelle Limits</h2>
+    <div class="gauges">
+      <div class="g" id="g5"></div>
+      <div class="g" id="g7"></div>
+    </div>
+    <div class="age" id="age">–</div>
+  </section>
+
+  <section class="card" id="updcard">
+    <h2>Updates</h2>
+    <div class="row">
+      <div class="t"><b>App <span id="appv"></span><span class="badge hide" id="appbadge">neu</span></b><small id="appinfo">–</small></div>
+      <button class="primary hide" id="appbtn">Jetzt installieren</button>
+    </div>
+    <div class="row">
+      <div class="t"><b>Puck-Firmware <span id="fwv"></span><span class="badge hide" id="fwbadge">neu</span></b><small id="fwinfo">–</small></div>
+      <button class="primary hide" id="fwbtn">Firmware aktualisieren</button>
+    </div>
+    <div id="busy" class="hide"><div class="bar"><i id="barfill"></i></div></div>
+    <div class="note hide" id="updmsg"></div>
+    <div class="note hide" id="fwold">Die Firmware auf dem Puck kann sich noch nicht selbst aktualisieren. Einmalig per Web-Flasher die neue Version aufspielen:
+      1) unter „Erweitert“ den USB-Port freigeben, 2) <a href="https://espressif.github.io/esptool-js/" target="_blank" rel="noopener">esptool-js</a> öffnen, Datei an Adresse 0x0 flashen, 3) Port wieder zurückgeben. Danach geht's hier per Klick.</div>
+    <div class="row">
+      <div class="t"><small id="checked">Noch nicht gesucht</small></div>
+      <button id="checkbtn">Nach Updates suchen</button>
+    </div>
+    <details>
+      <summary>Erweitert</summary>
+      <div class="row">
+        <div class="t"><b>Automatisch nach Updates suchen</b><small>Beim Start und alle 6 Stunden.</small></div>
+        <label class="sw"><input type="checkbox" id="autocheck"><span></span></label>
+      </div>
+      <div class="row">
+        <div class="t"><b>USB-Port freigeben</b><small>TokenOrb lässt den Puck los – z.B. für den Web-Flasher oder die Arduino-IDE.</small></div>
+        <label class="sw"><input type="checkbox" id="pause"><span></span></label>
+      </div>
+      <div class="row">
+        <div class="t"><b>Update-Quelle</b><small>GitHub-Repo (besitzer/name), aus dem die Releases kommen.</small></div>
+        <input type="text" id="repo" placeholder="besitzer/repo" spellcheck="false">
+      </div>
+      <div class="notes" id="notes"></div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Datenquelle</h2>
+    <div class="row">
+      <div class="t"><b>Claude Code (Terminal)</b><small>Werte kommen über die Statuszeile, sobald Claude Code antwortet.</small></div>
+      <label class="sw"><input type="checkbox" id="hook"><span></span></label>
+    </div>
+    <div class="row">
+      <div class="t"><b>Konto-Modus</b><small>Alle 3 Minuten direkt vom Konto – zählt auch Claude-App und Browser.</small>
+        <small id="accinfo"></small></div>
+      <label class="sw"><input type="checkbox" id="account"><span></span></label>
+    </div>
+    <div class="note">Der Konto-Modus nutzt eine nicht offiziell dokumentierte Anthropic-Adresse und die Anmeldung von Claude Code. Fällt sie weg, läuft alles über die Statuszeile weiter.</div>
+  </section>
+
+  <section class="card">
+    <h2>Puck</h2>
+    <div class="row">
+      <div class="t"><b>Helligkeit</b><small id="brv">100 %</small></div>
+      <input type="range" id="br" min="5" max="100" step="5">
+    </div>
+    <div class="row">
+      <div class="t"><b>Demo-Modus</b><small>Lässt Anzeige und Maskottchen mit Fantasiewerten laufen.</small></div>
+      <label class="sw"><input type="checkbox" id="demo"><span></span></label>
+    </div>
+    <div class="row win">
+      <div class="t"><b>Bluetooth</b><small>Verbinden ohne Kabel, wenn kein USB steckt.</small></div>
+      <label class="sw"><input type="checkbox" id="ble"><span></span></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Taste 2 am Puck</h2>
+    <div class="row">
+      <div class="t"><b>Kurz drücken</b></div>
+      <select id="b1"></select>
+    </div>
+    <div class="row">
+      <div class="t"><b>Lang drücken</b></div>
+      <select id="b2"></select>
+    </div>
+    <div class="row mac">
+      <div class="t"><small>macOS muss TokenOrb unter „Bedienungshilfen“ erlauben, Tastendrücke zu senden.</small></div>
+      <button id="acc">Bedienungshilfen öffnen</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>System</h2>
+    <div class="row win">
+      <div class="t"><b>Mit Windows starten</b><small>TokenOrb läuft dann unten rechts im Infobereich.</small></div>
+      <label class="sw"><input type="checkbox" id="auto"><span></span></label>
+    </div>
+    <div class="row">
+      <div class="t"><b>Programmordner</b><small>Einstellungen und Protokoll (tokenorb.log)</small></div>
+      <button id="folder">Ordner öffnen</button>
+    </div>
+  </section>
+
+  <footer id="ver"></footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const col=p=>p<50?"var(--green)":p<80?"var(--amber)":"var(--red)";
+function dur(s){if(s<60)return"jetzt";const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?`${d} T ${h} h`:h?`${h} h ${String(m).padStart(2,"0")} m`:`${m} m`}
+function gauge(el,label,w,now){
+  const p=w?Math.max(0,Math.min(100,w.pct)):null, R=62, C=2*Math.PI*R, arc=C*.75, f=p==null?0:p/100;
+  el.innerHTML=`<svg viewBox="0 0 150 150"><g transform="rotate(135 75 75)">
+   <circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--track)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${arc} ${C}"/>
+   <circle cx="75" cy="75" r="${R}" fill="none" stroke="${p==null?"var(--track)":col(p)}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${arc*f} ${C}"/></g></svg>
+   <div class="v">${p==null?"–":Math.round(p)+"<small style='font-size:16px;color:var(--dim)'>%</small>"}</div>
+   <div class="l">${label}</div><div class="r">${w&&w.resets_at?"Reset in "+dur(w.resets_at-now):"&nbsp;"}</div>`;
+}
+const show=(el,on)=>el.classList.toggle("hide",!on);
+let busy=false, actionsKey="";
+async function set(key,value){
+  busy=true;
+  try{const r=await fetch("/api/set",{method:"POST",headers:{"Content-Type":"application/json","X-TokenOrb":"1"},body:JSON.stringify({key,value})});
+    if(r.ok) render(await r.json()); else alert(await r.text());}
+  catch(e){}
+  finally{busy=false}
+}
+function fillActions(list){
+  const k=JSON.stringify(list); if(k===actionsKey) return; actionsKey=k;
+  for(const s of [$("b1"),$("b2")]){s.innerHTML="";for(const [v,l] of list){const o=document.createElement("option");o.value=v;o.textContent=l;s.append(o)}}
+}
+function renderUpdate(s){
+  const u=s.update;
+  $("appv").textContent=s.version;
+  show($("appbadge"),u.appUpdate); show($("appbtn"),u.appUpdate&&!u.busy);
+  $("appinfo").textContent=u.appUpdate?`Version ${u.latest} ist da.`:(u.latest?"Aktuell.":(u.error?"":"–"));
+  // Firmware
+  const conn=s.connected;
+  $("fwv").textContent=u.fwDevice?(u.fwDevice+(u.board?" · "+u.board:"")):"";
+  let fw="", fwok=false;
+  if(!conn) fw="Puck nicht verbunden.";
+  else if(!u.fwLatest) fw=u.latest?"Kein Firmware-Update im Release.":"–";
+  else if(!u.fwUpdate) fw="Aktuell.";
+  else if(!u.fwAvailable) fw=`Version ${u.fwLatest} gibt es noch nicht für dieses Board.`;
+  else if(!u.fwUSB) fw=`Version ${u.fwLatest} ist da – zum Aktualisieren per USB-Kabel anstecken.`;
+  else if(!u.fwCapable) fw=`Version ${u.fwLatest} ist da – einmalig per Web-Flasher nötig (siehe unten).`;
+  else {fw=`Version ${u.fwLatest} ist da.`; fwok=true}
+  $("fwinfo").textContent=fw;
+  show($("fwbadge"),conn&&u.fwUpdate); show($("fwbtn"),fwok&&!u.busy);
+  show($("fwold"),conn&&u.fwUpdate&&!u.fwCapable);
+  // Fortschritt + Meldungen
+  show($("busy"),!!u.busy); $("barfill").style.width=(u.progress||0)+"%";
+  const msg=u.busy?(u.msg||(u.busy==="app"?"Lade App-Update …":"Lade Firmware …")):(u.msg||u.error);
+  $("updmsg").textContent=msg||""; $("updmsg").classList.toggle("err",!!(u.msgErr||(!u.busy&&!u.msg&&u.error))); show($("updmsg"),!!msg);
+  $("checked").textContent=u.checked?"Zuletzt gesucht: vor "+dur(s.now-u.checked).replace("jetzt","wenigen Sekunden"):"Noch nicht gesucht";
+  $("checkbtn").disabled=!!u.busy;
+  if(document.activeElement!==$("repo")) $("repo").value=u.repo||"";
+  $("notes").textContent=u.notes?("Neu in "+u.latest+":\n"+u.notes):"";
+}
+function render(s){
+  document.body.dataset.os=s.os;
+  document.querySelectorAll(".win").forEach(e=>show(e,s.os==="windows"));
+  document.querySelectorAll(".mac").forEach(e=>show(e,s.os==="mac"));
+  const dev=$("dev"); dev.className="pill"+(s.connected?" ok":"");
+  dev.querySelector("span").textContent=s.paused?"Puck: USB freigegeben":s.device.replace("Geraet: ","Puck: ");
+  gauge($("g5"),"Session (5 Std.)",s.h5,s.now); gauge($("g7"),"Woche",s.d7,s.now);
+  $("age").textContent=s.updated?"Stand: vor "+dur(s.now-s.updated).replace("jetzt","wenigen Sekunden"):"Noch keine Werte – einmal in Claude Code etwas machen oder den Konto-Modus einschalten.";
+  if(document.activeElement!==$("br")){$("br").value=s.brightness;$("brv").textContent=s.brightness+" %"}
+  $("hook").checked=s.hooked; $("account").checked=s.account; $("demo").checked=s.demo;
+  $("ble").checked=s.bluetooth; $("auto").checked=s.autostart; $("autocheck").checked=s.autoCheck; $("pause").checked=s.paused;
+  $("accinfo").textContent=s.account?"Status: "+s.accountInfo:""; $("accinfo").className=s.account&&!/^an/.test(s.accountInfo)?"warn":"";
+  fillActions(s.actions); $("b1").value=s.button1; $("b2").value=s.button2;
+  renderUpdate(s);
+  $("ver").textContent="TokenOrb "+s.version+" · läuft im Hintergrund und startet mit "+(s.os==="mac"?"dem Mac":"Windows");
+}
+async function poll(){ if(!busy){ try{render(await (await fetch("/api/status")).json())}catch(e){$("dev").querySelector("span").textContent="TokenOrb läuft nicht"} } }
+$("hook").onchange=e=>set("hook",e.target.checked);
+$("account").onchange=e=>set("account",e.target.checked);
+$("demo").onchange=e=>set("demo",e.target.checked);
+$("ble").onchange=e=>set("bluetooth",e.target.checked);
+$("auto").onchange=e=>set("autostart",e.target.checked);
+$("autocheck").onchange=e=>set("autocheck",e.target.checked);
+$("pause").onchange=e=>set("pause",e.target.checked);
+$("br").oninput=e=>$("brv").textContent=e.target.value+" %";
+$("br").onchange=e=>set("brightness",+e.target.value);
+$("b1").onchange=e=>set("button1",e.target.value);
+$("b2").onchange=e=>set("button2",e.target.value);
+$("acc").onclick=()=>set("accessibility",true);
+$("folder").onclick=()=>set("folder",true);
+$("checkbtn").onclick=async e=>{e.target.disabled=true;e.target.textContent="Suche …";await set("check",true);e.target.textContent="Nach Updates suchen"};
+$("repo").onchange=e=>set("updateRepo",e.target.value);
+$("appbtn").onclick=()=>{if(confirm("Update installieren? TokenOrb startet dabei kurz neu."))set("updateApp",true)};
+$("fwbtn").onclick=()=>{if(confirm("Firmware auf den Puck spielen? Das dauert etwa eine Minute – Kabel währenddessen nicht abziehen."))set("updateFirmware",true)};
+poll(); setInterval(poll,1500);
+</script>
+</body>
+</html>

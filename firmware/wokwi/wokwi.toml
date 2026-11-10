@@ -1,0 +1,5 @@
+# Fuer die Wokwi-Erweiterung in VS Code: Ordner "wokwi" oeffnen, F1 -> "Wokwi: Start Simulator"
+[wokwi]
+version = 1
+firmware = '../.pio/build/sim/firmware.bin'
+elf = '../.pio/build/sim/firmware.elf'

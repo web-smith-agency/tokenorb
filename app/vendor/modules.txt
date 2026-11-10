@@ -1,0 +1,75 @@
+# fyne.io/systray v1.12.2
+## explicit; go 1.19
+fyne.io/systray
+fyne.io/systray/example
+fyne.io/systray/example/icon
+fyne.io/systray/internal/generated/menu
+fyne.io/systray/internal/generated/notifier
+# github.com/godbus/dbus/v5 v5.1.0
+## explicit; go 1.12
+github.com/godbus/dbus/v5
+github.com/godbus/dbus/v5/introspect
+github.com/godbus/dbus/v5/prop
+# github.com/go-ole/go-ole v1.3.0
+## explicit; go 1.12
+github.com/go-ole/go-ole
+github.com/go-ole/go-ole/_example/excel
+github.com/go-ole/go-ole/_example/excel2
+github.com/go-ole/go-ole/_example/ie
+github.com/go-ole/go-ole/_example/itunes
+github.com/go-ole/go-ole/_example/libreoffice
+github.com/go-ole/go-ole/_example/mediaplayer
+github.com/go-ole/go-ole/_example/msagent
+github.com/go-ole/go-ole/_example/msxml
+github.com/go-ole/go-ole/_example/outlook
+github.com/go-ole/go-ole/_example/winsock
+github.com/go-ole/go-ole/oleutil
+# github.com/saltosystems/winrt-go v0.0.0-20260317170058-9c2fec580d96
+## explicit; go 1.18
+github.com/saltosystems/winrt-go
+github.com/saltosystems/winrt-go/cmd/winrt-go-gen
+github.com/saltosystems/winrt-go/internal/cli
+github.com/saltosystems/winrt-go/internal/codegen
+github.com/saltosystems/winrt-go/internal/delegate
+github.com/saltosystems/winrt-go/internal/kernel32
+github.com/saltosystems/winrt-go/internal/winmd
+github.com/saltosystems/winrt-go/windows/devices/bluetooth
+github.com/saltosystems/winrt-go/windows/devices/bluetooth/advertisement
+github.com/saltosystems/winrt-go/windows/devices/bluetooth/genericattributeprofile
+github.com/saltosystems/winrt-go/windows/foundation
+github.com/saltosystems/winrt-go/windows/foundation/collections
+github.com/saltosystems/winrt-go/windows/media
+github.com/saltosystems/winrt-go/windows/media/control
+github.com/saltosystems/winrt-go/windows/storage/streams
+# go.bug.st/serial v1.6.4
+## explicit; go 1.17
+go.bug.st/serial
+go.bug.st/serial/enumerator
+go.bug.st/serial/portlist
+go.bug.st/serial/unixutils
+# github.com/creack/goselect v0.1.3
+## explicit; go 1.12
+github.com/creack/goselect
+github.com/creack/goselect/example
+# golang.org/x/sys v0.30.0
+## explicit; go 1.18
+golang.org/x/sys/cpu
+golang.org/x/sys/execabs
+golang.org/x/sys/plan9
+golang.org/x/sys/unix
+golang.org/x/sys/unix/internal/mkmerge
+golang.org/x/sys/unix/linux
+golang.org/x/sys/windows
+golang.org/x/sys/windows/mkwinsyscall
+golang.org/x/sys/windows/registry
+golang.org/x/sys/windows/svc
+golang.org/x/sys/windows/svc/debug
+golang.org/x/sys/windows/svc/eventlog
+golang.org/x/sys/windows/svc/example
+golang.org/x/sys/windows/svc/mgr
+# tinygo.org/x/bluetooth v0.15.0
+## explicit; go 1.23.8
+tinygo.org/x/bluetooth
+tinygo.org/x/bluetooth/rawterm
+tinygo.org/x/bluetooth/tools/gen-characteristic-uuids
+tinygo.org/x/bluetooth/tools/gen-service-uuids

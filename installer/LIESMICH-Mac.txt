@@ -1,0 +1,16 @@
+TokenOrb fuer macOS
+===================
+
+1. TokenOrb.app in den Ordner "Programme" ziehen (oder einfach liegen lassen).
+2. Doppelklick auf TokenOrb.app.
+   Beim ersten Mal sagt macOS, dass die App nicht ueberprueft werden konnte:
+   -> "Fertig" klicken, dann Systemeinstellungen > Datenschutz & Sicherheit,
+      ganz nach unten scrollen und bei TokenOrb auf "Dennoch oeffnen".
+3. TokenOrb richtet sich selbst ein und oeffnet das Einstellungsfenster.
+
+Danach laeuft TokenOrb im Hintergrund und startet automatisch mit dem Mac.
+Einstellungen jederzeit: TokenOrb.app wieder doppelklicken.
+Taste 2 am Puck: im Fenster auf "Bedienungshilfen oeffnen" und TokenOrb erlauben.
+
+Updates: TokenOrb sucht selbst nach neuen Versionen (App und Puck-Firmware) und
+meldet sich. Installiert wird per Klick im Einstellungsfenster unter "Updates".
