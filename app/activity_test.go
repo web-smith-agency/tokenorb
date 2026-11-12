@@ -167,8 +167,8 @@ func TestEventHooksInstallKeepsUserHooks(t *testing.T) {
 			for _, h := range g.Hooks {
 				if h.Command == eventHookCommand(cmd) {
 					n++
-					if !h.Async {
-						t.Errorf("%s nicht async", ev)
+					if h.Async == syncHookEvents[ev] {
+						t.Errorf("%s: async=%v", ev, h.Async)
 					}
 				}
 			}
@@ -243,5 +243,47 @@ func TestRunHookWritesSession(t *testing.T) {
 	runHook(strings.NewReader(`kaputt`)) // darf nicht abstuerzen
 	if line := timeLine(time.Unix(1_800_000_000, 0).In(time.FixedZone("CET", 3600))); line != "T 1800000000 60" {
 		t.Fatalf("Zeit: %s", line)
+	}
+}
+
+func TestStuckThinkingResolves(t *testing.T) {
+	// schnelle Antwort: Stop-Prozess startet vor dem UserPromptSubmit-Prozess
+	st := sessionState{}
+	applyHookEvent(&st, hookInput{Event: "Stop"}, 10_000)
+	applyHookEvent(&st, hookInput{Event: "UserPromptSubmit"}, 10_300)
+	if st.State != "idle" {
+		t.Fatalf("verspaeteter Prompt nach Stop: %+v", st)
+	}
+	applyHookEvent(&st, hookInput{Event: "UserPromptSubmit"}, 30_000) // echter neuer Prompt
+	if st.State != "think" {
+		t.Fatalf("neuer Prompt: %+v", st)
+	}
+	// Abbruch mit Esc: kein Stop, nach 60 s kommt idle_prompt
+	applyHookEvent(&st, hookInput{Event: "PreToolUse", Tool: "Bash"}, 31_000)
+	applyHookEvent(&st, hookInput{Event: "Notification", NType: "idle_prompt"}, 95_000)
+	if st.State != "input" {
+		t.Fatalf("idle_prompt nach Abbruch: %+v", st)
+	}
+}
+
+func TestEnsureEventHooksUpgradesAsyncStop(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	cmd := hookCommand("/Applications/TokenOrb.app/Contents/MacOS/TokenOrb")
+	if _, err := InstallHook(path, cmd); err != nil {
+		t.Fatal(err)
+	}
+	// Stand 1.4.0: alles async
+	data, _ := os.ReadFile(path)
+	old := strings.ReplaceAll(string(data), `"timeout": 5`, `"async": true, "timeout": 10`)
+	_ = os.WriteFile(path, []byte(old), 0o644)
+	if HasEventHooks(path, cmd) {
+		t.Fatal("alter Stand sollte als veraltet gelten")
+	}
+	if err := EnsureEventHooks(path); err != nil {
+		t.Fatal(err)
+	}
+	if !HasEventHooks(path, cmd) {
+		t.Fatal("nicht aktualisiert")
 	}
 }

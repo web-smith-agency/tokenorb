@@ -111,6 +111,10 @@ func errorKind(in hookInput) string {
 func applyHookEvent(st *sessionState, in hookInput, now int64) {
 	// aeltere Ereignisse (Hooks laufen parallel) duerfen den Zustand nicht zuruecksetzen
 	stale := st.Updated > now
+	// Hooks starten als eigene Prozesse und koennen sich ueberholen (z.B. beim ersten Start
+	// nach einem Update, wenn macOS das Programm noch prueft). Ein "arbeitet"-Ereignis, das
+	// direkt nach "fertig" ankommt, gehoert fast immer noch zur gerade beendeten Runde.
+	lateAfterStop := st.State == "idle" && st.Event == "done" && now-st.EventAt >= 0 && now-st.EventAt < 1500
 	setState := func(s, detail string) {
 		if stale {
 			return
@@ -120,7 +124,6 @@ func applyHookEvent(st *sessionState, in hookInput, now int64) {
 	event := func(e, detail string) {
 		st.Event, st.EventDetail, st.EventAt = e, detail, now
 	}
-	working := st.State == "think" || st.State == "tool" || st.State == "compact"
 
 	switch in.Event {
 	case "SessionStart":
@@ -131,11 +134,17 @@ func applyHookEvent(st *sessionState, in hookInput, now int64) {
 			event("hello", "")
 		}
 	case "UserPromptSubmit":
-		setState("think", "")
+		if !lateAfterStop {
+			setState("think", "")
+		}
 	case "PreToolUse":
-		setState("tool", toolKind(in.Tool))
+		if !lateAfterStop {
+			setState("tool", toolKind(in.Tool))
+		}
 	case "PostToolUse", "PostToolUseFailure", "PermissionDenied":
-		setState("think", "")
+		if !lateAfterStop {
+			setState("think", "")
+		}
 	case "PermissionRequest":
 		setState("perm", shortToolName(in.Tool))
 	case "Notification":
@@ -147,7 +156,10 @@ func applyHookEvent(st *sessionState, in hookInput, now int64) {
 				setState("perm", "")
 			}
 		case nt == "idle_prompt" || (nt == "" && strings.Contains(msg, "waiting for your input")):
-			if !working && st.State != "perm" {
+			// Claude wartet auf dich -> arbeitet sicher nicht mehr (z.B. nach Abbruch mit Esc,
+			// dann kommt kein Stop-Ereignis)
+			if st.State != "perm" {
+				st.Subs = nil
 				setState("input", "")
 			}
 		}

@@ -255,6 +255,11 @@ var hookEvents = []string{
 	"Stop", "StopFailure",
 }
 
+// Diese drei laufen synchron (dauert ca. 20 ms): Bei "claude -p" und in Werkzeugen, die
+// Claude Code ohne Terminal starten, beendet Claude Code Hintergrund-Hooks sofort nach dem
+// Ende – dann fehlte "fertig" und der Puck bliebe auf "denkt nach" stehen.
+var syncHookEvents = map[string]bool{"Stop": true, "StopFailure": true, "SessionEnd": true}
+
 type hookHandler struct {
 	Type    string `json:"type"`
 	Command string `json:"command"`
@@ -321,8 +326,12 @@ func setEventHooks(obj *orderedObject, cmd string) error {
 	if err != nil {
 		return err
 	}
-	ours, _ := json.Marshal(hookGroup{Hooks: []hookHandler{{Type: "command", Command: cmd, Async: true, Timeout: 10}}})
 	for _, ev := range hookEvents {
+		h := hookHandler{Type: "command", Command: cmd, Async: true, Timeout: 10}
+		if syncHookEvents[ev] {
+			h.Async, h.Timeout = false, 5
+		}
+		ours, _ := json.Marshal(hookGroup{Hooks: []hookHandler{h}})
 		var groups []json.RawMessage
 		if raw, ok := hooks.vals[ev]; ok {
 			g, _, err := withoutOurGroups(raw)
@@ -399,7 +408,7 @@ func HasEventHooks(path, statusCmd string) bool {
 		found := false
 		for _, g := range groups {
 			for _, h := range g.Hooks {
-				if h.Command == want && h.Async {
+				if h.Command == want && h.Async == !syncHookEvents[ev] {
 					found = true
 				}
 			}

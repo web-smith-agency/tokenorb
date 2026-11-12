@@ -8,7 +8,7 @@ import (
 )
 
 const appName = "TokenOrb"
-const appVersion = "1.4.0"
+const appVersion = "1.4.1"
 
 type Config struct {
 	ChainStatusLine string `json:"chainStatusLine"` // vorherige Statuszeile, wird weiter ausgefuehrt
