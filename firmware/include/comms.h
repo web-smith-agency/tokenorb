@@ -17,6 +17,13 @@
 //                                    zu je 4096 Byte; nach jedem Block bestaetigt das
 //                                    Geraet mit "F <empfangen>". Am Ende "F DONE" und
 //                                    Neustart, bei Fehlern "F ERR <grund>".
+//   A <zustand> [arg]                Claude-Code-Aktivitaet (ab FW 1.3.0), kommt von den Hooks:
+//                                    idle | think | tool <art> | sub <anzahl> | perm <werkzeug> |
+//                                    input | compact | done | err <art> | hello | bye
+//                                    Die App wiederholt den Zustand alle 15 s; ohne Wiederholung
+//                                    faellt das Geraet nach 60 s in den Leerlauf.
+//   E <name>                         Emote abspielen: party, week, worried, panic, love, wink
+//   T <unix> <utc-offset-min>        Uhrzeit fuer den Nachtmodus, z.B. T 1794521000 60
 //
 // Geraet -> PC
 //   ORB <version> <board>            Antwort auf "?"

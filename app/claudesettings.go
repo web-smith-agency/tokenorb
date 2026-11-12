@@ -85,6 +85,23 @@ func (o *orderedObject) remove(key string) {
 	}
 }
 
+// marshalCompact: wie marshal, aber ohne Einrueckung (fuer verschachtelte Objekte)
+func (o *orderedObject) marshalCompact() (json.RawMessage, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	for i, k := range o.keys {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		kb, _ := json.Marshal(k)
+		buf.Write(kb)
+		buf.WriteByte(':')
+		buf.Write(o.vals[k])
+	}
+	buf.WriteByte('}')
+	return json.RawMessage(buf.Bytes()), nil
+}
+
 func (o *orderedObject) marshal() ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteByte('{')
@@ -174,6 +191,9 @@ func InstallHook(path, ourCommand string) (previous string, err error) {
 	}
 	raw, _ := json.Marshal(nsl)
 	obj.set("statusLine", raw)
+	if err := setEventHooks(obj, eventHookCommand(ourCommand)); err != nil {
+		return "", err
+	}
 	out, err := obj.marshal()
 	if err != nil {
 		return "", err
@@ -187,9 +207,20 @@ func RemoveHook(path, previous string) error {
 	if err != nil {
 		return err
 	}
+	hooksChanged, err := removeEventHooks(obj)
+	if err != nil {
+		return err
+	}
 	sl, exists := currentStatusLine(obj)
 	if !exists || !strings.Contains(strings.ToLower(sl.Command), hookMarker) {
-		return nil // nicht unserer, nichts anfassen
+		if !hooksChanged {
+			return nil // nicht unserer, nichts anfassen
+		}
+		out, err := obj.marshal()
+		if err != nil {
+			return err
+		}
+		return writeFileAtomic(path, out)
 	}
 	if previous != "" {
 		raw, _ := json.Marshal(statusLineSetting{Type: "command", Command: previous, Padding: sl.Padding})
@@ -208,4 +239,201 @@ func RemoveHook(path, previous string) error {
 func hookCommand(exePath string) string {
 	p := strings.ReplaceAll(exePath, `\`, "/")
 	return fmt.Sprintf(`"%s" statusline`, p)
+}
+
+// =====================================================================
+// Hooks fuer die Aktivitaetsanzeige (ab 1.4.0): Claude Code ruft bei diesen
+// Ereignissen "<exe> hook" auf. Alle laufen im Hintergrund ("async"), Claude
+// wartet also nie auf TokenOrb. Eigene Hooks des Nutzers bleiben unangetastet.
+// =====================================================================
+
+var hookEvents = []string{
+	"SessionStart", "SessionEnd", "UserPromptSubmit",
+	"PreToolUse", "PostToolUse", "PostToolUseFailure",
+	"PermissionRequest", "PermissionDenied", "Notification",
+	"SubagentStart", "SubagentStop", "PreCompact", "PostCompact",
+	"Stop", "StopFailure",
+}
+
+type hookHandler struct {
+	Type    string `json:"type"`
+	Command string `json:"command"`
+	Async   bool   `json:"async,omitempty"`
+	Timeout int    `json:"timeout,omitempty"`
+}
+
+type hookGroup struct {
+	Matcher *string       `json:"matcher,omitempty"`
+	Hooks   []hookHandler `json:"hooks"`
+}
+
+// eventHookCommand macht aus dem Statuszeilen-Befehl den Hook-Befehl
+func eventHookCommand(statusCmd string) string {
+	return strings.TrimSuffix(statusCmd, " statusline") + " hook"
+}
+
+func isOurHookGroup(raw json.RawMessage) bool {
+	var g hookGroup
+	if json.Unmarshal(raw, &g) != nil || len(g.Hooks) == 0 {
+		return false
+	}
+	for _, h := range g.Hooks {
+		c := strings.ToLower(h.Command)
+		if !strings.Contains(c, hookMarker) || !strings.HasSuffix(strings.TrimSpace(c), " hook") {
+			return false
+		}
+	}
+	return true
+}
+
+func readHooksObject(obj *orderedObject) (*orderedObject, error) {
+	raw, ok := obj.vals["hooks"]
+	if !ok {
+		return parseOrderedObject(nil)
+	}
+	h, err := parseOrderedObject(raw)
+	if err != nil {
+		return nil, fmt.Errorf("\"hooks\" in settings.json: %w", err)
+	}
+	return h, nil
+}
+
+// withoutOurGroups entfernt unsere Eintraege aus einem Ereignis-Array
+func withoutOurGroups(raw json.RawMessage) ([]json.RawMessage, bool, error) {
+	var groups []json.RawMessage
+	if err := json.Unmarshal(raw, &groups); err != nil {
+		return nil, false, err
+	}
+	keep := groups[:0]
+	removed := false
+	for _, g := range groups {
+		if isOurHookGroup(g) {
+			removed = true
+			continue
+		}
+		keep = append(keep, g)
+	}
+	return keep, removed, nil
+}
+
+func setEventHooks(obj *orderedObject, cmd string) error {
+	hooks, err := readHooksObject(obj)
+	if err != nil {
+		return err
+	}
+	ours, _ := json.Marshal(hookGroup{Hooks: []hookHandler{{Type: "command", Command: cmd, Async: true, Timeout: 10}}})
+	for _, ev := range hookEvents {
+		var groups []json.RawMessage
+		if raw, ok := hooks.vals[ev]; ok {
+			g, _, err := withoutOurGroups(raw)
+			if err != nil {
+				return fmt.Errorf("hooks.%s in settings.json: %w", ev, err)
+			}
+			groups = g
+		}
+		groups = append(groups, ours)
+		arr, _ := json.Marshal(groups)
+		hooks.set(ev, arr)
+	}
+	out, err := hooks.marshalCompact()
+	if err != nil {
+		return err
+	}
+	obj.set("hooks", out)
+	return nil
+}
+
+func removeEventHooks(obj *orderedObject) (bool, error) {
+	if _, ok := obj.vals["hooks"]; !ok {
+		return false, nil
+	}
+	hooks, err := readHooksObject(obj)
+	if err != nil {
+		return false, err
+	}
+	changed := false
+	for _, ev := range append([]string(nil), hooks.keys...) {
+		groups, removed, err := withoutOurGroups(hooks.vals[ev])
+		if err != nil || !removed {
+			continue
+		}
+		changed = true
+		if len(groups) == 0 {
+			hooks.remove(ev)
+		} else {
+			arr, _ := json.Marshal(groups)
+			hooks.set(ev, arr)
+		}
+	}
+	if !changed {
+		return false, nil
+	}
+	if len(hooks.keys) == 0 {
+		obj.remove("hooks")
+	} else {
+		out, err := hooks.marshalCompact()
+		if err != nil {
+			return false, err
+		}
+		obj.set("hooks", out)
+	}
+	return true, nil
+}
+
+// HasEventHooks: sind unsere Aktivitaets-Hooks mit genau diesem Befehl eingetragen?
+func HasEventHooks(path, statusCmd string) bool {
+	obj, err := readSettings(path)
+	if err != nil {
+		return false
+	}
+	hooks, err := readHooksObject(obj)
+	if err != nil {
+		return false
+	}
+	want := eventHookCommand(statusCmd)
+	for _, ev := range hookEvents {
+		var groups []hookGroup
+		if json.Unmarshal(hooks.vals[ev], &groups) != nil {
+			return false
+		}
+		found := false
+		for _, g := range groups {
+			for _, h := range g.Hooks {
+				if h.Command == want && h.Async {
+					found = true
+				}
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+// EnsureEventHooks traegt die Aktivitaets-Hooks nach, wenn die Statuszeile schon
+// verbunden ist (Update von 1.3.x). Aendert sonst nichts.
+// Der Befehl wird aus der eingetragenen Statuszeile abgeleitet (gleicher Programmpfad).
+func EnsureEventHooks(path string) error {
+	obj, err := readSettings(path)
+	if err != nil {
+		return err
+	}
+	sl, ok := currentStatusLine(obj)
+	if !ok || !strings.Contains(strings.ToLower(sl.Command), hookMarker) || !strings.HasSuffix(sl.Command, " statusline") {
+		return nil
+	}
+	statusCmd := sl.Command
+	if HasEventHooks(path, statusCmd) {
+		return nil
+	}
+	if err := setEventHooks(obj, eventHookCommand(statusCmd)); err != nil {
+		return err
+	}
+	out, err := obj.marshal()
+	if err != nil {
+		return err
+	}
+	logf("Aktivitaets-Hooks in %s eingetragen", path)
+	return writeFileAtomic(path, out)
 }

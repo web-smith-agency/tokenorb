@@ -199,11 +199,13 @@ type deviceManager struct {
 	flashPct int
 	onKey    func(n int)
 	onChange func()
+	seenEvt  map[string]int64 // schon ans Geraet geschickte Aktivitaets-Ereignisse
 }
 
 func newDeviceManager(onKey func(int), onChange func()) *deviceManager {
 	return &deviceManager{status: "Geraet: suche ...", cmds: make(chan string, 16),
-		flashCh: make(chan *flashJob), flashPct: -1, onKey: onKey, onChange: onChange}
+		flashCh: make(chan *flashJob), flashPct: -1, onKey: onKey, onChange: onChange,
+		seenEvt: map[string]int64{}}
 }
 
 func (m *deviceManager) Status() string {
@@ -355,6 +357,13 @@ func (m *deviceManager) serve(l link) {
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	first := true
+	// Claude-Aktivitaet (ab Firmware 1.3.0): schnell nachsehen, selten wiederholen
+	ver, _ := parseDeviceID(l.ID())
+	activity := ver != "" && !versionLess(ver, "1.3.0")
+	actTick := time.NewTicker(300 * time.Millisecond)
+	defer actTick.Stop()
+	var lastAct string
+	var lastActSend, lastTime time.Time
 	for {
 		select {
 		case <-l.Done():
@@ -397,6 +406,31 @@ func (m *deviceManager) serve(l link) {
 			}
 			job.done <- err
 			return // Geraet startet neu bzw. Verbindung neu aufbauen
+		case <-actTick.C:
+			if !activity {
+				continue
+			}
+			now := time.Now()
+			if now.Sub(lastTime) > 10*time.Minute {
+				if l.Send(timeLine(now)) != nil {
+					return
+				}
+				lastTime = now
+			}
+			sess := loadSessions(sessionsDir())
+			for _, ev := range newActivityEvents(sess, m.seenEvt, now) {
+				if l.Send(ev) != nil {
+					return
+				}
+				lastAct = "" // Zustand danach erneut schicken
+			}
+			line := aggregateActivity(sess, now)
+			if line != lastAct || now.Sub(lastActSend) > 15*time.Second {
+				if l.Send(line) != nil {
+					return
+				}
+				lastAct, lastActSend = line, now
+			}
 		case <-tick.C:
 			fi, err := os.Stat(statePath())
 			changed := err == nil && !fi.ModTime().Equal(lastMod)

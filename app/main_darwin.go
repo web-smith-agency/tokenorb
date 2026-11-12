@@ -205,6 +205,9 @@ func runAgent() {
 		os.Exit(0)
 	}
 	logf("%s %s gestartet (Mac)", appName, appVersion)
+	if err := EnsureEventHooks(claudeSettingsPath()); err != nil {
+		logf("Aktivitaets-Hooks: %v", err)
+	}
 	var dm *deviceManager
 	dm = newDeviceManager(handleDeviceKey, func() {
 		_ = os.WriteFile(statusFilePath(), []byte(dm.Status()+"\n"), 0o644)
@@ -325,6 +328,8 @@ func main() {
 	switch strings.ToLower(os.Args[1]) {
 	case "statusline":
 		runStatusLine(os.Stdin, os.Stdout)
+	case "hook":
+		runHook(os.Stdin)
 	case "run":
 		runAgent()
 	case "install":

@@ -4,7 +4,7 @@
 //  Pins hier anpassen, falls du anders verdrahtest.
 // =====================================================================
 
-#define FW_VERSION    "1.2.0"
+#define FW_VERSION    "1.3.0"
 #define PRODUCT_NAME  "TokenOrb"      // Anzeigename / Bluetooth-Praefix
 #define BLE_PREFIX    "Orb-"          // Bluetooth-Name: Orb-XXXX
 
@@ -85,7 +85,7 @@
 
 // ---- LEDs ------------------------------------------------------------
 #define LED_COUNT        2     // beide Mini-WS2812 hintereinander (DOUT -> DIN)
-#define LED_MAX_BRIGHT   60    // 0..255 – WS2812 sind sehr hell
+#define LED_MAX_BRIGHT   150   // 0..255 (bis 1.2.0: 60, war zu dunkel)
 
 // ---- Verhalten -------------------------------------------------------
 #define LINK_TIMEOUT_MS      45000UL   // so lange ohne Daten -> "Warte auf PC"
@@ -98,6 +98,15 @@
 #define IDLE_TIRED_MS        (15UL * 60UL * 1000UL)  // muede: Lider haengen, gaehnt
 #define IDLE_SLEEP_MS        (30UL * 60UL * 1000UL)  // schlaeft: Display gedimmt, Taste weckt
 #define SLEEP_BRIGHT_PCT     10
+
+// Claude-Aktivitaet: ohne neue A-Zeile so lange -> Leerlauf (App wiederholt alle 15 s)
+#define ACT_TIMEOUT_MS       60000UL
+#define DOUBLE_PRESS_MS      350       // Taste 1 doppelt = streicheln
+
+// Nachtmodus (braucht die Uhrzeit von der App): frueher einschlafen, Uhr zeigen
+#define NIGHT_FROM_MIN       (23 * 60)  // 23:00
+#define NIGHT_TO_MIN         ( 7 * 60)  // 07:00
+#define NIGHT_SLEEP_MS       ( 5UL * 60UL * 1000UL)
 
 // Firmenlogo beim Start (include/logo.h, erzeugt mit tools/make_logo.py)
 #define SHOW_BOOT_LOGO       1

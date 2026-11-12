@@ -113,6 +113,9 @@ func main() {
 		case "statusline":
 			runStatusLine(os.Stdin, os.Stdout)
 			return
+		case "hook":
+			runHook(os.Stdin)
+			return
 		case "--version", "version":
 			fmt.Println(appName, appVersion)
 			return

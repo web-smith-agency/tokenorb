@@ -42,6 +42,22 @@ struct Window {
 
 enum class Transport : uint8_t { None, Usb, Ble };
 
+// Was Claude Code gerade macht (kommt von den Hooks ueber die App, Befehl "A")
+enum class Act : uint8_t { Idle, Think, Tool, Sub, Perm, Input, Compact };
+// kurze Ereignisse, die einmal abgespielt werden
+enum class ActEvt : uint8_t { None, Done, Err, Hello, Bye };
+
+struct Activity {
+  Act act = Act::Idle;
+  ActEvt evt = ActEvt::None;
+  uint8_t subs = 0;          // laufende Helfer (Subagents)
+  char detail[24] = {0};     // z.B. Werkzeug bei "perm", Fehlerart bei "err"
+  uint32_t sinceMs = 0;      // seit wann gearbeitet / gewartet wird
+  uint32_t refreshMs = 0;    // letzte A-Zeile (die App wiederholt alle 15 s)
+  uint32_t evtMs = 0;        // Start des Ereignisses
+  bool working() const { return act == Act::Think || act == Act::Tool || act == Act::Sub || act == Act::Compact; }
+};
+
 struct AppState {
   Window h5;               // 5-Stunden-Fenster
   Window d7;               // 7-Tage-Fenster
@@ -54,6 +70,21 @@ struct AppState {
   int otaPct = -1;         // Firmware-Update ueber USB: 0..100, -1 = kein Update
   int batteryPct = -1;     // -1 = kein Akku gemessen
   uint32_t activityMs = 0; // millis() der letzten "echten" Aenderung (neue Werte, Tastendruck)
+  Activity act;            // Claude-Code-Aktivitaet
+  // Uhrzeit vom PC (Befehl "T"), fuer den Nachtmodus
+  bool hasTime = false;
+  int64_t unixAtRx = 0;    // Unix-Zeit beim Empfang
+  uint32_t timeRxMs = 0;   // millis() beim Empfang
+  int16_t tzMin = 0;       // Abstand zu UTC in Minuten (inkl. Sommerzeit)
+
+  // Minuten seit Mitternacht (Ortszeit), -1 = keine Uhrzeit
+  int localMinute() const {
+    if (!hasTime) return -1;
+    int64_t t = unixAtRx + (int64_t)((millis() - timeRxMs) / 1000) + (int64_t)tzMin * 60;
+    int64_t m = (t / 60) % 1440;
+    if (m < 0) m += 1440;
+    return (int)m;
+  }
 
   uint32_t sinceS() const { return (millis() - rxMs) / 1000; }
   uint32_t idleMs() const { return millis() - activityMs; }

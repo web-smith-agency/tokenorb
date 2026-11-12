@@ -29,6 +29,9 @@ func runTray(openWindow bool) {
 
 func onTrayReady(openWindow bool) {
 	logf("TokenOrb %s gestartet", appVersion)
+	if err := EnsureEventHooks(claudeSettingsPath()); err != nil {
+		logf("Aktivitaets-Hooks: %v", err)
+	}
 	systray.SetIcon(trayIcon(0, false))
 	systray.SetTitle(appName)
 	systray.SetTooltip(appName + ": warte auf Daten")

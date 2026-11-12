@@ -1,6 +1,7 @@
 #include "comms.h"
 #include "config.h"
 #include "state.h"
+#include "ui.h"
 #include <Update.h>
 
 #if USE_BLE
@@ -277,6 +278,31 @@ void handleLine(char* line, uint8_t src) {
     case 'd': {
       float f;
       if (parseNum(strtok_r(nullptr, " ", &save), f)) onCmdDemo(f > 0);
+      break;
+    }
+    case 'A':
+    case 'a': {   // Claude-Aktivitaet
+      char* st = strtok_r(nullptr, " ", &save);
+      if (st) uiActivity(st, save ? save : "");
+      break;
+    }
+    case 'E':
+    case 'e': {   // Emote abspielen
+      char* name = strtok_r(nullptr, " ", &save);
+      if (name) uiEmote(name);
+      break;
+    }
+    case 'T':
+    case 't': {   // Uhrzeit: Unix-Sekunden und Abstand zu UTC in Minuten
+      char* ts = strtok_r(nullptr, " ", &save);
+      char* tz = strtok_r(nullptr, " ", &save);
+      if (!ts) break;
+      long long t = atoll(ts);
+      if (t < 1600000000LL) break;
+      g_state.unixAtRx = t;
+      g_state.timeRxMs = millis();
+      g_state.tzMin = tz ? (int16_t)constrain(atoi(tz), -900, 900) : 0;
+      g_state.hasTime = true;
       break;
     }
     default:

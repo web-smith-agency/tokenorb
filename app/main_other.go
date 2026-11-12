@@ -14,5 +14,9 @@ func main() {
 		runStatusLine(os.Stdin, os.Stdout)
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "hook" {
+		runHook(os.Stdin)
+		return
+	}
 	fmt.Println(appName, appVersion, "- Tray-App nur unter Windows verfuegbar.")
 }

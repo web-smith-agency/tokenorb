@@ -116,18 +116,43 @@ void updateLeds() {
   if (now - last < 30) return;
   last = now;
 
-  bool alarm, idle;
-  uint32_t c = uiStatusColor(alarm, idle);
-  float period = alarm ? 450.0f : (idle ? 4000.0f : 2600.0f);
-  float wave = 0.5f + 0.5f * sinf(now / period * TWO_PI);
-  float level = idle ? (0.05f + 0.15f * wave) : (0.35f + 0.65f * wave);
-  level *= LED_MAX_BRIGHT / 255.0f;
-  level *= max(0.15f, g_appliedBright / 255.0f);
-
-  uint8_t r = ((c >> 16) & 0xFF) * level;
-  uint8_t g = ((c >> 8) & 0xFF) * level;
-  uint8_t b = (c & 0xFF) * level;
-  for (int i = 0; i < LED_COUNT; i++) leds.setPixelColor(i, leds.Color(r, g, b));
+  uint32_t c, el;
+  LedPattern p = uiLedPattern(c, el);
+  auto wave = [now](float period) { return 0.5f + 0.5f * sinf(now / period * TWO_PI); };
+  auto rnd = [](uint32_t n) { n = (n ^ 61) ^ (n >> 16); n *= 9; n ^= n >> 4; n *= 0x27d4eb2d; n ^= n >> 15; return (n % 1000) / 1000.0f; };
+  uint32_t c1 = c, c2 = c;
+  float l1, l2;
+  switch (p) {
+    case LEDP_SLEEP: l1 = l2 = 0.05f + 0.15f * wave(4000); break;
+    case LEDP_ALARM: l1 = l2 = 0.35f + 0.65f * wave(450); break;
+    case LEDP_THINK: {   // abwechselnd links und rechts
+      float a = wave(1100);
+      l1 = 0.12f + 0.88f * a;
+      l2 = 0.12f + 0.88f * (1 - a);
+      break;
+    }
+    case LEDP_TOOL: {    // flackert wie eine Festplatten-LED
+      uint32_t n = now / 80;
+      l1 = 0.2f + 0.8f * rnd(n);
+      l2 = 0.2f + 0.8f * rnd(n + 999);
+      break;
+    }
+    case LEDP_PERM: l1 = l2 = 0.2f + 0.8f * wave(1200); break;
+    case LEDP_DONE:
+    case LEDP_ERR: {     // zweimal kurz gruen bzw. rot
+      bool on = el < 160 || (el > 320 && el < 480);
+      if (on) { c1 = c2 = (p == LEDP_DONE) ? 0x34D399u : 0xF87171u; l1 = l2 = 1; }
+      else l1 = l2 = 0.35f + 0.65f * wave(2600);
+      break;
+    }
+    default: l1 = l2 = 0.35f + 0.65f * wave(2600); break;
+  }
+  float scale = (LED_MAX_BRIGHT / 255.0f) * max(0.15f, g_appliedBright / 255.0f);
+  for (int i = 0; i < LED_COUNT; i++) {
+    uint32_t cc = (i % 2) ? c2 : c1;
+    float lv = ((i % 2) ? l2 : l1) * scale;
+    leds.setPixelColor(i, leds.Color(((cc >> 16) & 0xFF) * lv, ((cc >> 8) & 0xFF) * lv, (cc & 0xFF) * lv));
+  }
   leds.show();
 }
 
@@ -172,8 +197,21 @@ void handleButtons() {
     return;
   }
 
-  // Taste 1: kurz = Ansicht wechseln, lang = Helligkeit
-  if (e1 == EV_SHORT) setView(uiGetView() + 1);
+  // Taste 1: kurz = Ansicht wechseln, doppelt = streicheln, lang = Helligkeit
+  static uint32_t pendingShort = 0;
+  if (e1 == EV_SHORT) {
+    if (pendingShort && now - pendingShort < DOUBLE_PRESS_MS) {
+      pendingShort = 0;
+      uiEmote("love");
+      if (uiGetView() != VIEW_BUDDY) setView(VIEW_BUDDY);
+    } else {
+      pendingShort = now ? now : 1;
+    }
+  }
+  if (pendingShort && now - pendingShort >= DOUBLE_PRESS_MS) {
+    pendingShort = 0;
+    setView(uiGetView() + 1);
+  }
   if (e1 == EV_LONG) setBrightIdx(g_brightIdx + 1);
 
   // Taste 2: wird an den PC gemeldet (Aktion in der App einstellbar)
