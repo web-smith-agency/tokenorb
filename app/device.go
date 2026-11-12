@@ -424,7 +424,7 @@ func (m *deviceManager) serve(l link) {
 				}
 				lastAct = "" // Zustand danach erneut schicken
 			}
-			line := aggregateActivity(sess, now)
+			line := visibleActivity(aggregateActivity(sess, now), getConfig().ShowWorking)
 			if line != lastAct || now.Sub(lastActSend) > 15*time.Second {
 				if l.Send(line) != nil {
 					return

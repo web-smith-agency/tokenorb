@@ -287,3 +287,22 @@ func TestEnsureEventHooksUpgradesAsyncStop(t *testing.T) {
 		t.Fatal("nicht aktualisiert")
 	}
 }
+
+func TestVisibleActivityHidesWorking(t *testing.T) {
+	for in, want := range map[string]string{
+		"A think": "A idle", "A tool bash": "A idle", "A sub 2": "A idle", "A compact": "A idle",
+		"A perm Bash": "A perm Bash", "A input": "A input", "A idle": "A idle",
+	} {
+		if got := visibleActivity(in, false); got != want {
+			t.Errorf("%s -> %s, erwartet %s", in, got, want)
+		}
+		if got := visibleActivity(in, true); got != in {
+			t.Errorf("mit showWorking veraendert: %s", got)
+		}
+	}
+	now := time.Unix(1_800_000_000, 0)
+	s := map[string]sessionState{"a": {State: "input", Updated: now.Add(-6 * time.Minute).UnixMilli()}}
+	if got := aggregateActivity(s, now); got != "A idle" {
+		t.Errorf("Du bist dran zu lange: %s", got)
+	}
+}

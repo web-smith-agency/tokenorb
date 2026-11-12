@@ -324,10 +324,11 @@ func loadSessions(dir string) map[string]sessionState {
 // ---- Zusammenfassen ----------------------------------------------------------------
 
 const (
-	actWorkTimeout = 10 * time.Minute // arbeitet ohne neues Ereignis -> vermutlich abgebrochen
-	actWaitTimeout = 60 * time.Minute // wartet auf Erlaubnis / Eingabe
-	actSubTimeout  = 30 * time.Minute
-	actEventMaxAge = 8 * time.Second // nur frische Ereignisse abspielen
+	actWorkTimeout  = 10 * time.Minute // arbeitet ohne neues Ereignis -> vermutlich abgebrochen
+	actWaitTimeout  = 60 * time.Minute // wartet auf Erlaubnis
+	actInputTimeout = 5 * time.Minute  // "Du bist dran" nach einer Antwort nur kurz zeigen
+	actSubTimeout   = 30 * time.Minute
+	actEventMaxAge  = 8 * time.Second // nur frische Ereignisse abspielen
 )
 
 // aggregateActivity: wichtigster Zustand ueber alle Sitzungen als Geraete-Zeile.
@@ -352,8 +353,12 @@ func aggregateActivity(sessions map[string]sessionState, now time.Time) string {
 			if age > actWorkTimeout {
 				state = "idle"
 			}
-		case "perm", "input":
+		case "perm":
 			if age > actWaitTimeout {
+				state = "idle"
+			}
+		case "input":
+			if age > actInputTimeout {
 				state = "idle"
 			}
 		default:
@@ -418,4 +423,20 @@ func newActivityEvents(sessions map[string]sessionState, seen map[string]int64, 
 func timeLine(now time.Time) string {
 	_, off := now.Zone()
 	return fmt.Sprintf("T %d %d", now.Unix(), off/60)
+}
+
+// visibleActivity: Ohne "showWorking" zeigt der Puck nur Rueckfragen, "Du bist dran",
+// Fertig und Fehler. "denkt nach" lief sonst dauernd, weil auch Sitzungen im Hintergrund
+// (z.B. aus der Claude-Desktop-App) dieselben Hooks ausloesen.
+func visibleActivity(line string, showWorking bool) string {
+	if showWorking {
+		return line
+	}
+	if f := strings.Fields(line); len(f) >= 2 {
+		switch f[1] {
+		case "think", "tool", "sub", "compact":
+			return "A idle"
+		}
+	}
+	return line
 }

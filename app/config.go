@@ -8,7 +8,7 @@ import (
 )
 
 const appName = "TokenOrb"
-const appVersion = "1.4.1"
+const appVersion = "1.4.2"
 
 type Config struct {
 	ChainStatusLine string `json:"chainStatusLine"` // vorherige Statuszeile, wird weiter ausgefuehrt
@@ -20,7 +20,8 @@ type Config struct {
 	AccountMode     bool   `json:"accountMode"`          // Limits direkt vom Konto holen (inoffiziell)
 	UpdateRepo      string `json:"updateRepo,omitempty"` // GitHub "besitzer/name", leer = Standard
 	NoUpdateCheck   bool   `json:"noUpdateCheck,omitempty"`
-	SetupDone       bool   `json:"setupDone,omitempty"` // Ersteinrichtung (Autostart an) erledigt
+	SetupDone       bool   `json:"setupDone,omitempty"`   // Ersteinrichtung (Autostart an) erledigt
+	ShowWorking     bool   `json:"showWorking,omitempty"` // "denkt nach" am Puck zeigen (Standard: aus)
 }
 
 func defaultConfig() Config {
