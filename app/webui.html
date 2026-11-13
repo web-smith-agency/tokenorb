@@ -225,7 +225,7 @@ function render(s){
   document.querySelectorAll(".mac").forEach(e=>show(e,s.os==="mac"));
   const dev=$("dev"); dev.className="pill"+(s.connected?" ok":"");
   dev.querySelector("span").textContent=s.paused?"Puck: USB freigegeben":s.device.replace("Geraet: ","Puck: ");
-  gauge($("g5"),"Session (5 Std.)",s.h5,s.now); gauge($("g7"),"Woche",s.d7,s.now);
+  gauge($("g5"),!s.h5&&s.d7?"Session: kein 5h-Limit":"Session (5 Std.)",s.h5,s.now); gauge($("g7"),"Woche",s.d7,s.now);
   $("age").textContent=s.updated?"Stand: vor "+dur(s.now-s.updated).replace("jetzt","wenigen Sekunden"):"Noch keine Werte – einmal in Claude Code etwas machen oder den Konto-Modus einschalten.";
   if(document.activeElement!==$("br")){$("br").value=s.brightness;$("brv").textContent=s.brightness+" %"}
   $("hook").checked=s.hooked; $("account").checked=s.account; $("demo").checked=s.demo;

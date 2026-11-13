@@ -4,7 +4,7 @@
 //  Pins hier anpassen, falls du anders verdrahtest.
 // =====================================================================
 
-#define FW_VERSION    "1.3.0"
+#define FW_VERSION    "1.3.1"
 #define PRODUCT_NAME  "TokenOrb"      // Anzeigename / Bluetooth-Praefix
 #define BLE_PREFIX    "Orb-"          // Bluetooth-Name: Orb-XXXX
 

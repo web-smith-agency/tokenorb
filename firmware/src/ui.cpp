@@ -27,6 +27,8 @@ uint32_t g_toastUntil = 0;
 uint32_t g_nextBlink = 0, g_blinkStart = 0;
 
 constexpr int CX = 120, CY = 120;
+// Kein 5h-Limit (z.B. Claude Ultra): dann ist die Woche die Hauptanzeige (aussen, gross)
+bool g_weekMain = false;
 
 // ---- Farben (0xRRGGBB) ------------------------------------------------
 constexpr uint32_t C_BG     = 0x000000u;
@@ -145,13 +147,12 @@ void drawRings(float h5, float d7, float pace5, float pace7, bool thin = false,
   const int o1 = 117, i1 = thin ? 111 : 104;
   const int o2 = thin ? 107 : 98, i2 = thin ? 103 : 91;
   gaugeArc(i1, o1, 0, 1, f(track1));
-  gaugeArc(i2, o2, 0, 1, f(C_TRACK2));
   if (h5 > 0.3f) gaugeArc(i1, o1, 0, h5 / 100.0f, f(usageColor(h5)));
+  if (dim <= 0) paceTick(i1, o1, pace5);
+  if (g_weekMain) return;   // nur ein Ring
+  gaugeArc(i2, o2, 0, 1, f(C_TRACK2));
   if (d7 > 0.3f) gaugeArc(i2, o2, 0, d7 / 100.0f, f(mix(usageColor(d7), C_TEXT, 0.15f)));
-  if (dim <= 0) {
-    paceTick(i1, o1, pace5);
-    paceTick(i2, o2, pace7);
-  }
+  if (dim <= 0) paceTick(i2, o2, pace7);
 }
 
 // Komet im 5h-Ring: zeigt, dass Claude arbeitet
@@ -611,6 +612,7 @@ struct Snapshot {
   int32_t r5, r7;          // Sekunden bis Reset
   float pace5, pace7;      // vergangener Anteil des Fensters
   int32_t lim5, lim7;      // Prognose bis Limit
+  bool weekMain;           // kein 5h-Limit: Woche steht in h5/r5/..., d7 = -1
 };
 
 Snapshot snap() {
@@ -624,8 +626,19 @@ Snapshot snap() {
   s.pace7 = g_state.d7.elapsedFrac(since);
   s.lim5 = g_state.h5.secondsToLimit(since);
   s.lim7 = g_state.d7.secondsToLimit(since);
+  // Kein 5h-Limit, aber Wochendaten: Woche wird zur Hauptanzeige. Alles, was sonst die
+  // Session zeigt (grosse Zahl, Augenfarbe, Warnungen, LEDs), zeigt dann die Woche.
+  s.weekMain = !g_state.demo && s.h5 < 0 && s.d7 >= 0;
+  if (s.weekMain) {
+    s.h5 = s.d7; s.r5 = s.r7; s.pace5 = s.pace7; s.lim5 = s.lim7;
+    s.d7 = -1; s.r7 = -1; s.pace7 = -1; s.lim7 = -1;
+  }
+  g_weekMain = s.weekMain;
   return s;
 }
+
+// Limit kommt bald? Bei der Woche erst in den letzten 12 h dramatisch werden
+bool limSoon(const Snapshot& s) { return s.lim5 >= 0 && (!s.weekMain || s.lim5 < 12 * 3600); }
 
 // Emotes aus den Limit-Werten ausloesen
 void checkEmotes(const Snapshot& s, uint32_t now) {
@@ -635,10 +648,11 @@ void checkEmotes(const Snapshot& s, uint32_t now) {
     else if (g_prevH5 < 80 && s.h5 >= 80 && s.h5 < 100) startEmote(EM_WORRIED, now);
   }
   if (g_prevD7 >= 20 && s.d7 >= 0 && s.d7 < 5) startEmote(EM_WEEK, now);   // neue Woche
-  if (g_prevLim < 0 && s.lim5 >= 0 && g_prevH5 >= 0) startEmote(EM_PANIC, now);
+  int32_t lim = limSoon(s) ? s.lim5 : -1;
+  if (g_prevLim < 0 && lim >= 0 && g_prevH5 >= 0) startEmote(EM_PANIC, now);
   g_prevH5 = s.h5;
   g_prevD7 = s.d7;
-  g_prevLim = s.lim5;
+  g_prevLim = lim;
 }
 
 // ---- Buddy-Ansicht: Szenen -------------------------------------------------
@@ -821,7 +835,7 @@ void emoteParty(const Snapshot& s, uint32_t now, uint32_t L, bool week) {
   if (on) { f.eyes(EYE_HAPPY); f.mouth = M_GRIN; f.blush = true; } else { f.wide = true; f.mouth = M_O; }
   drawFace(f, now);
   partyHat(f);
-  label(week ? "Neue Woche!" : (on ? "Frische Tokens!" : "Reset"), C_GREEN);
+  label(week || s.weekMain ? "Neue Woche!" : (on ? "Frische Tokens!" : "Reset"), C_GREEN);
 }
 void emoteWorried(const Snapshot& s, uint32_t now) {
   ringsNormal(s);
@@ -861,7 +875,7 @@ void sceneKO(const Snapshot& s, uint32_t now) {
   }
   char buf[32];
   int m = g_state.localMinute();
-  if (m >= 0 && s.r5 >= 0) {
+  if (m >= 0 && s.r5 >= 0 && s.r5 < 20 * 3600) {
     int t = (m + (s.r5 + 59) / 60) % 1440;
     snprintf(buf, sizeof(buf), "Pause bis %d:%02d", t / 60, t % 60);
   } else {
@@ -1007,7 +1021,7 @@ void viewBuddy(const Snapshot& s, uint32_t now, int stage, Cur c, bool& ownStatu
   }
   ownStatus = false;
   if (s.h5 >= 99.5f) { sceneKO(s, now); ownStatus = true; return; }
-  if (s.lim5 >= 0 || s.h5 >= 90) { scenePanic(s, now); return; }
+  if (limSoon(s) || s.h5 >= 90) { scenePanic(s, now); return; }
   sceneIdle(s, now, stage);
 }
 
@@ -1051,14 +1065,14 @@ void viewGauge(const Snapshot& s, uint32_t now, const Overlay& o) {
   drawRings(g_dispH5, g_dispD7, s.pace5, s.pace7, false, o.track1);
   if (o.comet > 0) comet(now, g_dispH5, o.comet);
 
-  text("SESSION", CX, 62, &fonts::DejaVu12, C_DIM);
+  text(s.weekMain ? "WOCHE" : "SESSION", CX, 62, &fonts::DejaVu12, C_DIM);
   bigPercent(s.h5 < 0 ? -1 : g_dispH5, 128, C_TEXT);
 
   char buf[32], d[16];
   if (s.lim5 >= 0) {
     fmtDur(s.lim5, d, sizeof(d));
     snprintf(buf, sizeof(buf), "Limit in ~%s", d);
-    bool flash = (now / 500) % 2;
+    bool flash = limSoon(s) && (now / 500) % 2;
     text(buf, CX, 152, &fonts::DejaVu12, flash ? C_RED : C_AMBER);
   } else {
     fmtDur(s.r5, d, sizeof(d));
@@ -1067,6 +1081,7 @@ void viewGauge(const Snapshot& s, uint32_t now, const Overlay& o) {
   }
 
   // Woche
+  if (s.weekMain) { text("kein 5h-Limit", CX, 178, &fonts::DejaVu12, C_FAINT); return; }
   if (s.d7 >= 0) snprintf(buf, sizeof(buf), "Woche %d%%", (int)roundf(s.d7));
   else snprintf(buf, sizeof(buf), "Woche --");
   int w = textW(buf, &fonts::DejaVu12);
@@ -1101,8 +1116,13 @@ void detailBlock(const char* title, float pct, int32_t remain, int32_t lim, floa
 
 void viewDetails(const Snapshot& s, const Overlay& o) {
   drawRings(g_dispH5, g_dispD7, s.pace5, s.pace7, true, o.track1);
-  detailBlock("SESSION  -  Reset in", s.h5, s.r5, s.lim5, s.pace5, 50);
-  detailBlock("WOCHE  -  Reset in", s.d7, s.r7, s.lim7, s.pace7, 118);
+  if (s.weekMain) {
+    detailBlock("WOCHE  -  Reset in", s.h5, s.r5, s.lim5, s.pace5, 66);
+    text("Session: kein 5h-Limit", CX, 146, &fonts::DejaVu12, C_FAINT);
+  } else {
+    detailBlock("SESSION  -  Reset in", s.h5, s.r5, s.lim5, s.pace5, 50);
+    detailBlock("WOCHE  -  Reset in", s.d7, s.r7, s.lim7, s.pace7, 118);
+  }
   if (o.txt[0]) return;
   char buf[32], d[16];
   uint32_t age = g_state.ageS + g_state.sinceS();
@@ -1146,7 +1166,8 @@ void viewSleep(const Snapshot& s, uint32_t now) {
   for (auto& p : st) sparkle(p[0], p[1], 1.5f + 2.5f * fmaxf(0, sinf(now / 700.0f + p[2])), C_MOON);
   sleepFace(now, CX, 112, 40);
   char buf[32];
-  if (s.h5 >= 0 && s.d7 >= 0) snprintf(buf, sizeof(buf), "%d%%  -  Woche %d%%", (int)roundf(s.h5), (int)roundf(s.d7));
+  if (s.weekMain) snprintf(buf, sizeof(buf), "Woche %d%%", (int)roundf(s.h5));
+  else if (s.h5 >= 0 && s.d7 >= 0) snprintf(buf, sizeof(buf), "%d%%  -  Woche %d%%", (int)roundf(s.h5), (int)roundf(s.d7));
   else if (s.h5 >= 0) snprintf(buf, sizeof(buf), "%d%%", (int)roundf(s.h5));
   else buf[0] = 0;
   if (buf[0]) text(buf, CX, 176, &fonts::DejaVu12, C_DIM);
@@ -1323,7 +1344,7 @@ bool uiAsleep() {
 uint32_t uiStatusColor(bool& alarm, bool& idle) {
   Snapshot s = snap();
   idle = !g_state.demo && (!g_state.linked() || !g_state.hasData || s.h5 < 0 || uiAsleep());
-  alarm = !idle && (s.h5 >= 90 || s.lim5 >= 0);
+  alarm = !idle && (s.h5 >= 90 || limSoon(s));
   if (idle) return C_SLEEP;
   return usageColor(s.h5);
 }
